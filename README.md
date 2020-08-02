@@ -1,6 +1,6 @@
 # Learning To Stop While Learning To Predict (ICML 2020)
 
-- Authors: [Xinshi Chen](http://xinshi-chen.com/), [Hanjun Dai](https://hanjun-dai.github.io/), [Yu Li](https://sites.google.com/view/liyu1995/home), [Xin Gao](https://sfb.kaust.edu.sa/Pages/Home.aspx), [Le Song](https://www.cc.gatech.edu/~lsong/)
+- Authors: [Xinshi Chen](http://xinshi-chen.com/), [Hanjun Dai](https://hanjun-dai.github.io/), [Yu Li](https://liyu95.com), [Xin Gao](https://sfb.kaust.edu.sa/Pages/Home.aspx), [Le Song](https://www.cc.gatech.edu/~lsong/)
 
 - [Link to paper](https://arxiv.org/abs/2006.05082)
 
