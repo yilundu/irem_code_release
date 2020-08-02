@@ -56,6 +56,59 @@ Coming soon.
 
 # Reproduce Experiments In Sec 5.3.
 
-Coming soon.
+## Configure the environment
+Please navigate to the section folder `./dncnn_stop`. Then, using the following command, we can configure the environment for the denoise experiments. Please keep the environment activated for this section.
+```
+conda env create -f environment.yml
+source activate dncnn_stop
+```
+
+## Download the dataset
+Please download the [dataset](https://www.dropbox.com/s/95xkvazbspwvury/data.zip?dl=0) and unzip the dataset in this folder.
+
+## Download the baseline methods
+The code files of the baseline methods are also available [here](https://www.dropbox.com/s/a5ulw137fzlj594/traditional_methods.zip?dl=0). 
+
+## Run our method
+Please run the following command to check our method.
+```
+# pretrain the model
+python -u train.py --model DnCNN --outf logs/dncnn_b_l20_all_train_n55 \
+	--num_of_layers 20 --batchSize 256 --epoch 50
+
+# fine-tuning with tao as 10
+python -u train.py --model DnCNN_DS --outf logs/dncnn_b_ds_l20_all_train_tune_tao10 \
+	--train_all True --batchSize 256 --lr 1e-4 --epoch 50 \
+	--tao 10 --pretrain_path logs/dncnn_b_l20_all_train_n55/net.pth \
+	--pretrain True
+
+# policy training, this is in test phase
+python train_stop_kl.py \
+	--outf logs/dncnn_b_ds_l20_all_train_tune_tao10 --restart True -phase test
+
+# joint training, this is in test phase
+python train_stop_joint.py \
+	--outf logs/dncnn_b_ds_l20_all_train_tune_tao10 --restart True -phase test
+
+# Quantitative evaluation
+for noise in 35 45 55 65 75; do
+	python -u test.py --test_data Set68  --num_of_layers 20 \
+		--logdir logs/dncnn_b_ds_l20_all_train_tune_tao10 --model DnCNN_DS \
+		--test_noiseL ${noise}
+done
+
+# generate the denoised images
+for noise in 45 65;do
+	python -u test.py --test_data Set68  --num_of_layers 20 \
+		--logdir logs/dncnn_b_ds_l20_all_train_tune_tao10 --model DnCNN_DS \
+		--test_noiseL ${noise} --save_img True --img_folder ./out_imgs/dncnn_stop_${noise}
+done
+```
+
+## Deactivate the environment
+```
+source deactivate
+```
+
 
 
