@@ -66,9 +66,6 @@ source activate dncnn_stop
 ## Download the dataset
 Please download the [dataset](https://www.dropbox.com/s/95xkvazbspwvury/data.zip?dl=0) and unzip the dataset in this folder.
 
-## Download the baseline methods
-The code files of the baseline methods are also available [here](https://www.dropbox.com/s/a5ulw137fzlj594/traditional_methods.zip?dl=0). 
-
 ## Run our method
 Please run the following command to check our method.
 ```
