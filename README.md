@@ -52,7 +52,7 @@ run_lista_stop_stage2.sh
 
 # Reproduce Experiments In Sec 5.2.
 
-Coming soon.
+Please navigate to `maml_stop/` folder for the details.
 
 # Reproduce Experiments In Sec 5.3.
 

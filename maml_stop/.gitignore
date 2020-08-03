@@ -1,0 +1,7 @@
+*.hdf5
+*.egg-info/
+__pycache__/
+scratch/
+*.zip
+dataset/
+results/
