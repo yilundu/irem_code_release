@@ -50,11 +50,11 @@ For stage 2 training, run the following command.
 run_lista_stop_stage2.sh
 ```
 
-# Reproduce Experiments In Sec 5.2.
+# Reproduce Experiments In Sec 5.2. MAML
 
 Please navigate to `maml_stop/` folder for the details.
 
-# Reproduce Experiments In Sec 5.3.
+# Reproduce Experiments In Sec 5.3. Image Denoising
 
 ## Configure the environment
 Please navigate to the section folder `./dncnn_stop`. Then, using the following command, we can configure the environment for the denoise experiments. Please keep the environment activated for this section.
@@ -101,11 +101,5 @@ for noise in 45 65;do
 		--test_noiseL ${noise} --save_img True --img_folder ./out_imgs/dncnn_stop_${noise}
 done
 ```
-
-## Deactivate the environment
-```
-source deactivate
-```
-
 
 
