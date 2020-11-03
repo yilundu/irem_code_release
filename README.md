@@ -101,5 +101,22 @@ for noise in 45 65;do
 		--test_noiseL ${noise} --save_img True --img_folder ./out_imgs/dncnn_stop_${noise}
 done
 ```
+# Reproduce Experiments In Sec 5.4. Image Recognition
+Please navigate to the section folder `./sdn_stop`.
 
+## Download the dataset
+Download TinyImageNet from https://tiny-imagenet.herokuapp.com/, place it under data/ and use data.py - create_val_folder() to generate proper directory structure.
+
+## Run the experiment
+```
+# Train the classifiers
+python train_networks.py
+
+# Check the performance of sdn and l2stop. The policy network would not work at the current stage for this task.
+python train_stop_kl.py
+
+```
+
+## Credit and note
+We build this part based on http://shallowdeep.network. We mainly changed the loss function in `model_funcs.py`.
 
