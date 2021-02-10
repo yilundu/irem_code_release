@@ -2,13 +2,23 @@
 
 - Authors: [Xinshi Chen](http://xinshi-chen.com/), [Hanjun Dai](https://hanjun-dai.github.io/), [Yu Li](https://liyu95.com), [Xin Gao](https://sfb.kaust.edu.sa/Pages/Home.aspx), [Le Song](https://www.cc.gatech.edu/~lsong/)
 
-- [Link to paper](https://arxiv.org/abs/2006.05082)
+- [Link to paper](http://proceedings.mlr.press/v119/chen20c.html)
+
+- [Link to slides](http://xinshi-chen.com/papers/slides/icml2020_l2stop.pdf)
 
 - [Link to ICML 15-min presentation](https://icml.cc/virtual/2020/poster/6279)
 
 If you found this library useful in your research, please consider citing
 
 ```
+@inproceedings{chen2020learning,
+  title={Learning to stop while learning to predict},
+  author={Chen, Xinshi and Dai, Hanjun and Li, Yu and Gao, Xin and Song, Le},
+  booktitle={International Conference on Machine Learning},
+  pages={1520--1530},
+  year={2020},
+  organization={PMLR}
+}
 @article{chen2020learning,
   title={Learning to Stop While Learning to Predict},
   author={Chen, Xinshi and Dai, Hanjun and Li, Yu and Gao, Xin and Song, Le},
