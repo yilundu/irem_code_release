@@ -10,7 +10,7 @@ import torchvision.utils as utils
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, sampler
 from tensorboardX import SummaryWriter
-from models import DnCNN, DnCNN_DS, Recurrent_DS
+from models import DnCNN, DnCNN_DS, Recurrent_DS, EBM
 from dataset import prepare_data, Dataset
 import torch.nn.functional as F
 from utils import *
@@ -78,6 +78,8 @@ def main():
     # Build model
     if opt.model=='DnCNN':
         net = DnCNN(channels=1, num_of_layers=opt.num_of_layers)
+    if opt.model=='ebm':
+        net = EBM(channels=1, num_of_layers=opt.num_of_layers)
     if opt.model=='DnCNN_DS':
         net = DnCNN_DS(channels=1, num_of_layers=opt.num_of_layers)
     if opt.model=='Recurrent_DS':
@@ -96,18 +98,20 @@ def main():
             print('The pretriained model doses not exist!')
         model_dict = model.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-        model_dict.update(pretrained_dict) 
+        model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
         print('Load pretrained model successful!')
         if opt.freeze:
             for name, param in model.named_parameters():
-                
+
                 if 'internal_transform' not in name:
                     param.requires_grad = False
 
     if opt.restart and os.path.exists(os.path.join(opt.outf, 'net.pth')):
         print('Loading previous model...')
         model.load_state_dict(torch.load(os.path.join(opt.outf, 'net.pth')))
+
+    print("number of parameters ", sum(param.numel() for param in model.parameters()))
 
     if opt.train_all:
         for param in model.parameters():
@@ -156,12 +160,16 @@ def main():
                     sizeN = noise[0,:,:,:].size()
                     noise[n,:,:,:] = torch.FloatTensor(sizeN).normal_(mean=0, std=stdN[n]/255.)
             imgn_train = img_train + noise
+
             img_train, imgn_train = Variable(img_train.cuda()), Variable(imgn_train.cuda())
             noise = Variable(noise.cuda())
-            
+
             if opt.model=='DnCNN':
                 out_train = model(imgn_train)[-1]
                 loss = criterion(out_train, noise) / (imgn_train.size()[0]*2)
+            if opt.model=='ebm':
+                out_train = model(imgn_train)
+                loss = criterion(out_train, img_train) / (imgn_train.size()[0]*2)
             if (opt.model=='DnCNN_DS') or (opt.model=='Recurrent_DS'):
                 out_train = model(imgn_train)
                 loss_t = list()
@@ -179,6 +187,10 @@ def main():
             if opt.model=='DnCNN':
                 out_train = torch.clamp(imgn_train-model(imgn_train)[-1], 0., 1.)
                 psnr_train = batch_PSNR(out_train, img_train, 1.)
+            if opt.model=='ebm':
+                out_train = model(imgn_train)
+                out_train = torch.clamp(out_train, 0., 1.)
+                psnr_train = batch_PSNR(out_train, img_train, 1.)
             if (opt.model=='DnCNN_DS') or (opt.model=='Recurrent_DS'):
                 psnrs = list()
                 outputs_train = model(imgn_train)
@@ -187,6 +199,9 @@ def main():
                 psnrs = np.stack(psnrs, axis=1)
                 # pdb.set_trace()
                 psnr_train = psnrs.max(axis=1).mean()
+
+            if i == 10:
+                break
 
             if i%10==0:
                 print("[epoch %d][%d/%d] loss: %.4f PSNR_train: %.4f Running time: %.2fs" %
@@ -213,6 +228,12 @@ def main():
                 if opt.model=='DnCNN':
                     out_val = torch.clamp(imgn_val-model(imgn_val)[-1], 0., 1.)
                     psnr_val += batch_PSNR(out_val, img_val, 1.)
+                if opt.model=='ebm':
+                    print("call once")
+                    out_val = model.forward(imgn_val)
+                    print("done once")
+                    out_val = torch.clamp(out_val.detach(), 0., 1.)
+                    psnr_val += batch_PSNR(out_val, img_val, 1.)
                 if (opt.model=='DnCNN_DS') or (opt.model=='Recurrent_DS'):
                     preds = model(imgn_val)
                     psnrs = list()
@@ -225,7 +246,12 @@ def main():
         print("\n[epoch %d] PSNR_val: %.4f" % (epoch+1, psnr_val))
         writer.add_scalar('PSNR on validation data', psnr_val, epoch)
         # log the images
-        out_train = torch.clamp(imgn_train-model(imgn_train)[-1], 0., 1.)
+
+        if opt.model == 'ebm':
+            out_train = torch.clamp(model(imgn_train), 0., 1.)
+        else:
+            out_train = torch.clamp(imgn_train-model(imgn_train)[-1], 0., 1.)
+
         Img = utils.make_grid(img_train.data, nrow=8, normalize=True, scale_each=True)
         Imgn = utils.make_grid(imgn_train.data, nrow=8, normalize=True, scale_each=True)
         Irecon = utils.make_grid(out_train.data, nrow=8, normalize=True, scale_each=True)

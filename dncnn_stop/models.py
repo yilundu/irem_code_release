@@ -6,6 +6,92 @@ class Flatten(nn.Module):
         return input.view(input.size(0), -1)
 
 
+def swish(x):
+    return x * torch.sigmoid(x)
+
+
+class ResBlock(nn.Module):
+    def __init__(self, filters=64):
+        super(ResBlock, self).__init__()
+
+        self.filters = filters
+
+        self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
+
+
+    def forward(self, x):
+        x_orig = x
+
+        x = self.conv1(x)
+        x = swish(x)
+
+        x = self.conv2(x)
+        x = swish(x)
+
+        x_out = x_orig + x
+
+        return x_out
+
+class EBM(nn.Module):
+    def __init__(self, channels, num_of_layers=17, iter=10):
+        super(EBM, self).__init__()
+        self.num_of_layers = num_of_layers
+        kernel_size = 3
+        padding = 1
+        features = 64
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Conv2d(in_channels=2*channels, out_channels=features,
+            kernel_size=kernel_size, padding=padding, bias=True))
+        self.layers.append(nn.SiLU(inplace=True))
+
+        for _ in range((num_of_layers-2) // 2):
+            self.layers.append(ResBlock(filters=features))
+
+        self.layers.append(nn.Conv2d(in_channels=features,
+            out_channels=1, kernel_size=1, padding=0, bias=True))
+
+    def compute_energy(self, x):
+        for i, l in enumerate(self.layers):
+            x = l(x)
+
+        energy = x.mean(dim=-1).mean(dim=-1)
+        return energy
+
+    def forward(self, x):
+        opt = x.clone()
+        w = x.size(-1)
+
+        if w == 256:
+            train = False
+        else:
+            train = True
+
+
+        with torch.enable_grad():
+            opt.requires_grad_()
+
+            for i in range(5):
+                inp = torch.cat([opt, x], dim=1)
+                energy = self.compute_energy(inp)
+
+                if i == 4:
+                    if train:
+                        opt_grad, = torch.autograd.grad([energy.sum()], [opt], create_graph=True)
+                    else:
+                        opt_grad, = torch.autograd.grad([energy.sum()], [opt], create_graph=False)
+                else:
+                    opt_grad, = torch.autograd.grad([energy.sum()], [opt], create_graph=False)
+
+                opt = opt - opt_grad * 10
+
+                if not train:
+                    opt = opt.detach()
+                    opt.requires_grad_()
+
+        return opt
+
+
 class DnCNN(nn.Module):
     def __init__(self, channels, num_of_layers=17):
         super(DnCNN, self).__init__()
