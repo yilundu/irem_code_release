@@ -9,7 +9,9 @@ A link to our paper can be found on [arXiv]().
 Official codebase for [Learning Iterative Reasoning through Energy Minimization]().
 Contains scripts to reproduce experiments.
 
-![image info](./architecture.png)
+<p align="center">
+  <img src="architecture.png" width="60%"/>
+</p>
 
 ## Instructions
 
