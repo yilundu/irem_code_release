@@ -10,7 +10,9 @@ Official codebase for [Learning Iterative Reasoning through Energy Minimization]
 Contains scripts to reproduce experiments.
 
 <p align="center">
-  <img src="architecture.png" width="60%"/>
+  <video width=60% playsinline="" autoplay="" loop="" preload="" muted="">
+      <source src="teaser.mp4" type="video/mp4"/>
+  </video>
 </p>
 
 ## Instructions
@@ -30,7 +32,7 @@ To run continuous matrix addition experiments you utilize the following command:
 python train.py --exp=addition_experiment --train --num_steps=10 --dataset=addition --train --cuda --infinite
 ```
 
-We may substitute the addition dataset with other datasets such as inverse or lowrank (as well as additional ones defined in dataset.py).
+We may substitute the flag --dataset with other keywords such as inverse or lowrank (as well as additional ones defined in dataset.py).
 
 To run discrete graph reasoning experiments you may utilize the following command:
 
@@ -38,7 +40,7 @@ To run discrete graph reasoning experiments you may utilize the following comman
 python train.py --exp=identity_experiment --train --num_steps=10 --dataset=identity --train --cuda --infinite
 ```
 
-We may substitute the addition dataset with other datasets such as shortestpath or connected (as well as additional ones defined in graph\_dataset.py).
+We may substitute the flag --dataset with other datasets such as shortestpath or connected (as well as additional ones defined in graph\_dataset.py).
 
 
 
