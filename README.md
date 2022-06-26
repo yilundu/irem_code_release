@@ -24,17 +24,22 @@ pip install -r requirements.txt
 We provide code for running continuous graph reasoning experiments in `graph_train.py` and code for running continuous matrix experiments in `train.py`.
 
 
+To run continuous matrix addition experiments you utilize the following command:
+
+```
+python train.py --exp=addition_experiment --train --num_steps=10 --dataset=addition --train --cuda --infinite
+```
+
+We may substitute the addition dataset with other datasets such as inverse or lowrank (as well as additional ones defined in dataset.py).
+
 To run discrete graph reasoning experiments you may utilize the following command:
 
 ```
-pip install -r requirements.txt
+python train.py --exp=identity_experiment --train --num_steps=10 --dataset=identity --train --cuda --infinite
 ```
 
-To run continuous matrix experiments you utilize the following command
+We may substitute the addition dataset with other datasets such as shortestpath or connected (as well as additional ones defined in graph\_dataset.py).
 
-```
-pip install -r requirements.txt
-```
 
 
 ## Citation

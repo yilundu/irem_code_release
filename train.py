@@ -143,20 +143,14 @@ parser.add_argument('--log_interval', default=10, type=int,
 parser.add_argument('--save_interval', default=1000, type=int,
                     help='save outputs every so many batches')
 
-# visualization
-parser.add_argument('--heatmap', action='store_true',
-                    help='make a heatmap of model')
-parser.add_argument('--vis', action='store_true',
-                    help='make a visualization of energy vs distance')
-
 # data
 parser.add_argument('--data_workers', default=4, type=int,
                     help='Number of different data workers to load data in parallel')
 
 # Model specific settings
-parser.add_argument('--rank', default=10, type=int,
+parser.add_argument('--rank', default=20, type=int,
                     help='rank of matrix to use')
-parser.add_argument('--num_steps', default=5, type=int,
+parser.add_argument('--num_steps', default=10, type=int,
                     help='Steps of gradient descent for training')
 parser.add_argument('--step_lr', default=100.0, type=float,
                     help='step size of latents')
@@ -189,6 +183,7 @@ best_test_error_10 = 10.0
 best_test_error_20 = 10.0
 best_test_error_40 = 10.0
 best_test_error_80 = 10.0
+best_test_error = 10.0
 
 
 def average_gradients(model):
@@ -345,7 +340,7 @@ def calc_geometric(l, dim=-1):
 
 
 def test(train_dataloader, model, FLAGS, step=0):
-    global best_test_error_10, best_test_error_20, best_test_error_40, best_test_error_80
+    global best_test_error_10, best_test_error_20, best_test_error_40, best_test_error_80, best_test_error
     if FLAGS.cuda:
         dev = torch.device("cuda")
     else:
@@ -354,12 +349,11 @@ def test(train_dataloader, model, FLAGS, step=0):
     replay_buffer = None
     dist_list = []
     energy_list = []
+    min_dist_list = []
 
     model.eval()
     counter = 0
 
-    joint_dist = []
-    joint_energy = []
     with torch.no_grad():
         for inp, im in train_dataloader:
             im = im.float().to(dev)
@@ -393,8 +387,10 @@ def test(train_dataloader, model, FLAGS, step=0):
             dist = dist.mean(dim=-1)
             n = dist.size(1)
 
-            joint_dist.append(dist[:20].flatten())
-            joint_energy.append(energies[:20].flatten())
+            dist_energies = dist[1:, :]
+            min_idx = energies[:, :, 0].argmin(dim=0)[None, :]
+            dist_min_energy = torch.gather(dist_energies, 0, min_idx)
+            min_dist_list.append(dist_min_energy.detach())
 
             dist = dist.mean(dim=-1)
 
@@ -405,14 +401,11 @@ def test(train_dataloader, model, FLAGS, step=0):
             counter = counter + 1
 
             if counter > 10:
-                joint_dist = torch.cat(joint_dist).detach().cpu().numpy()
-                joint_energy = torch.cat(joint_energy).detach().cpu().numpy()
-                rix = np.random.permutation(joint_energy.shape[0])
-
-                rix = rix[:1000]
-
-                dist = torch.stack(dist_list, dim=0).mean(dim=0)
-                energies = torch.stack(energy_list, dim=0).mean(dim=0)
+                dist_list = torch.stack(dist_list, dim=0)
+                dist = dist_list.mean(dim=0)
+                energy_list = torch.stack(energy_list, dim=0)
+                energies = energy_list.mean(dim=0)
+                min_dist = torch.stack(min_dist_list, dim=0).mean()
 
                 print("Testing..................")
                 print("step errors: ", dist[:20])
@@ -425,109 +418,19 @@ def test(train_dataloader, model, FLAGS, step=0):
         best_test_error_20 = min(best_test_error_20, dist[0].item())
         best_test_error_40 = min(best_test_error_40, dist[0].item())
         best_test_error_80 = min(best_test_error_80, dist[0].item())
+        best_test_error = min(best_test_error, dist[0].item())
     else:
         best_test_error_10 = min(best_test_error_10, dist[9].item())
         best_test_error_20 = min(best_test_error_20, dist[19].item())
         best_test_error_40 = min(best_test_error_40, dist[39].item())
         best_test_error_80 = min(best_test_error_80, dist[79].item())
+        best_test_error = min(best_test_error, min_dist.item())
 
-    print("best test error (10, 20, 40, 80): {} {} {} {}".format(
+    print("best test error (10, 20, 40, 80, min_energy): {} {} {} {} {}".format(
             best_test_error_10, best_test_error_20, best_test_error_40,
-            best_test_error_80))
+            best_test_error_80, best_test_error))
 
     model.train()
-
-
-def vis(train_dataloader, model, FLAGS, step=0):
-    """
-        Generate a visualization of distance from solutions vs energy
-    """
-    if FLAGS.cuda:
-        dev = torch.device("cuda")
-    else:
-        dev = torch.device("cpu")
-
-    replay_buffer = None
-
-    model.eval()
-    counter = 0
-    energies = []
-    dists = []
-
-    with torch.no_grad():
-        for im_corrupt, im in train_dataloader:
-            im = im.float().to(dev)
-            im_corrupt = im_corrupt.float().to(dev)
-
-            noise = (torch.rand_like(im) - 0.5) * 2.0
-            alpha = torch.rand_like(im[:, 0:1])
-
-            joint_input = torch.cat(
-                [alpha * noise + (1 - alpha) * im, im_corrupt], dim=-1)
-            energy = model.forward(joint_input)
-            dist = torch.norm(noise - im, p=2, dim=-1)
-
-            counter = counter + 1
-
-            energies.append(energy)
-            dists.append(dist)
-
-            if counter > 10:
-                break
-
-        energies = torch.cat(energies, dim=0).detach().cpu().numpy()
-        dists = torch.cat(dists, dim=0).detach().cpu().numpy()
-
-        plt.scatter(energies, dists)
-        plt.savefig("test.png")
-
-    model.train()
-
-
-def heatmap(model, FLAGS, step=0):
-    """
-        Generate a heatmap of energy predictions
-    """
-
-    if FLAGS.cuda:
-        dev = torch.device("cuda")
-    else:
-        dev = torch.device("cpu")
-
-    np.random.seed(30)
-    replay_buffer = None
-
-    model.eval()
-    gridsize = 200
-    max_range = 0.8
-
-    x = np.random.uniform(-1, 1, (2,))
-    y = np.random.uniform(-1, 1, (2,))
-    z = x + y
-
-    z = torch.Tensor(z).float().to(dev)
-    x = torch.Tensor(x).float().to(dev)
-    y = torch.Tensor(y).float().to(dev)
-    joint_input = torch.cat([z, x, y], dim=-1)
-    joint_input = joint_input[None, :]
-
-    x, y = torch.meshgrid(torch.linspace(-max_range, max_range,
-                          gridsize), torch.linspace(-max_range, max_range, gridsize))
-    input_grid = torch.stack([x, y], dim=-1).float().to(dev)
-    energy = model.forward(joint_input)
-
-    input_grid = input_grid.view(-1, 2) + z[None, :]
-    s = input_grid.size(0)
-    joint_input = joint_input[:, 2:].expand(s, -1)
-
-    joint_input = torch.cat([input_grid, joint_input], dim=-1)
-    energy = model.forward(joint_input)
-
-    energy = energy.detach().cpu().numpy()
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    sns.heatmap(energy.reshape(gridsize, gridsize), cmap="Spectral")
-    plt.savefig("heatmap.png")
 
 
 def train(train_dataloader, test_dataloader, logger, model,
@@ -547,7 +450,6 @@ def train(train_dataloader, test_dataloader, logger, model,
 
             # Initalize a solution from random
             pred = (torch.rand_like(im) - 0.5) * 2
-            alpha = torch.rand_like(im[:, :1])
 
             # Sample a proportion of samples from past optimization results
             if FLAGS.replay_buffer and len(replay_buffer) >= FLAGS.batch_size:
@@ -813,11 +715,7 @@ def main_single(rank, FLAGS):
     else:
         model.eval()
 
-    if FLAGS.vis:
-        vis(test_dataloader, model, FLAGS, step=FLAGS.resume_iter)
-    elif FLAGS.heatmap:
-        heatmap(model, FLAGS, step=FLAGS.resume_iter)
-    elif FLAGS.train:
+    if FLAGS.train:
         train(
             train_dataloader,
             test_dataloader,
