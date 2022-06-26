@@ -10,9 +10,7 @@ Official codebase for [Learning Iterative Reasoning through Energy Minimization]
 Contains scripts to reproduce experiments.
 
 <p align="center">
-  <video width=60% playsinline="" autoplay="" loop="" preload="" muted="">
-      <source src="teaser.mp4" type="video/mp4"/>
-  </video>
+  <img src="architecture.png" width="60%"/>
 </p>
 
 ## Instructions
