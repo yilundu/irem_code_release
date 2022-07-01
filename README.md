@@ -2,7 +2,7 @@
 
 Yilun Du, Shuang Li, Joshua B. Tenenbaum, Igor Mordatch
 
-A link to our paper can be found on [arXiv]().
+A link to our paper can be found on [arXiv](https://arxiv.org/abs/2206.15448).
 
 ## Overview
 
