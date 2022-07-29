@@ -36,7 +36,7 @@ To evaluate the final performance of the model after training, you may use the c
 python train.py --exp=addition_experiment  --num_steps=10 --dataset=addition --cuda --infinite --resume_iter=10000 
 ```
 
-and the following command for the OOD training set:
+and the following command for the OOD test set:
 
 ```
 python train.py --exp=addition_experiment  --num_steps=10 --dataset=addition --cuda --infinite --resume_iter=10000  --ood
