@@ -30,7 +30,21 @@ To run continuous matrix addition experiments you utilize the following command:
 python train.py --exp=addition_experiment --train --num_steps=10 --dataset=addition --train --cuda --infinite
 ```
 
+To evaluate the final performance of the model after training, you may use the command:
+
+```
+python train.py --exp=addition_experiment  --num_steps=10 --dataset=addition --cuda --infinite --resume_iter=10000 
+```
+
+and the following command for the OOD training set:
+
+```
+python train.py --exp=addition_experiment  --num_steps=10 --dataset=addition --cuda --infinite --resume_iter=10000  --ood
+```
+
 We may substitute the flag --dataset with other keywords such as inverse or lowrank (as well as additional ones defined in dataset.py).
+
+
 
 To run discrete graph reasoning experiments you may utilize the following command:
 
@@ -41,6 +55,11 @@ python graph_train.py --exp=identity_experiment --train --num_steps=10 --dataset
 We may substitute the flag --dataset with other datasets such as shortestpath or connected (as well as additional ones defined in graph\_dataset.py).
 
 
+To evaluate the model, you may then utilize the following command:
+
+```
+python graph_train.py --exp=identity_experiment --num_steps=10 --dataset=identity --cuda --infinite  --resume_iter=10000
+```
 
 ## Citation
 
