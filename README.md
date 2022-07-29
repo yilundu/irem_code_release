@@ -35,7 +35,7 @@ We may substitute the flag --dataset with other keywords such as inverse or lowr
 To run discrete graph reasoning experiments you may utilize the following command:
 
 ```
-python train.py --exp=identity_experiment --train --num_steps=10 --dataset=identity --train --cuda --infinite
+python graph_train.py --exp=identity_experiment --train --num_steps=10 --dataset=identity --train --cuda --infinite
 ```
 
 We may substitute the flag --dataset with other datasets such as shortestpath or connected (as well as additional ones defined in graph\_dataset.py).
