@@ -302,9 +302,8 @@ def ema_model(model, model_ema, mu=0.999):
 def sync_model(model):
     size = float(dist.get_world_size())
 
-    for model in model:
-        for param in model.parameters():
-            dist.broadcast(param.data, 0)
+    for param in model.parameters():
+        dist.broadcast(param.data, 0)
 
 
 def init_model(FLAGS, device, dataset):
