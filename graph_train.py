@@ -2,7 +2,6 @@ import torch
 from graph_models import GraphEBM, GraphFC, GraphPonder, GraphRecurrent
 import torch.nn.functional as F
 import os
-import pdb
 from graph_dataset import Identity, ConnectedComponents, ShortestPath
 import matplotlib.pyplot as plt
 import torch.multiprocessing as mp
@@ -11,11 +10,9 @@ from torch.optim import Adam, SparseAdam
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.loader import DataLoader
 from torch_geometric.data.batch import Batch
-from easydict import EasyDict
 import os.path as osp
 from torch.nn.utils import clip_grad_norm
 import numpy as np
-from imageio import imwrite
 import argparse
 from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms
@@ -253,7 +250,7 @@ def init_model(FLAGS, device, dataset):
         model = GraphEBM(dataset.inp_dim, dataset.out_dim, FLAGS.mem)
 
     model.to(device)
-    optimizer = Adam(model.parameters(), lr=1e-4)
+    optimizer = Adam(model.parameters(), lr=FLAGS.lr)
 
     return model, optimizer
 
