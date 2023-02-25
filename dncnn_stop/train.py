@@ -1,5 +1,6 @@
 import os
 import argparse
+from imageio import imwrite
 import numpy as np
 import random
 import time
@@ -30,7 +31,7 @@ parser.add_argument("--batchSize", type=int, default=256, help="Training batch s
 parser.add_argument("--num_of_layers", type=int, default=20, help="Number of total layers")
 parser.add_argument("--epochs", type=int, default=100, help="Number of training epochs")
 parser.add_argument("--milestone", type=int, default=25, help="When to decay learning rate; should be less than epochs")
-parser.add_argument("--lr", type=float, default=1e-3, help="Initial learning rate")
+parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
 parser.add_argument("--outf", type=str, default="logs", help='path of log files')
 parser.add_argument("--mode", type=str, default="B", help='with known noise level (S) or blind training (B)')
 parser.add_argument("--noiseL", type=float, default=35, help='noise level; ignored when mode=B')
@@ -107,15 +108,23 @@ def main():
                 if 'internal_transform' not in name:
                     param.requires_grad = False
 
+    if opt.model=='ebm' and opt.pretrain:
+        if os.path.exists(opt.pretrain_path):
+            pretrained_dict = torch.load(opt.pretrain_path)
+        else:
+            print('The pretriained model doses not exist!')
+
+        model.load_state_dict(pretrained_dict, strict=False)
+
     if opt.restart and os.path.exists(os.path.join(opt.outf, 'net.pth')):
         print('Loading previous model...')
-        model.load_state_dict(torch.load(os.path.join(opt.outf, 'net.pth')))
+        model.load_state_dict(torch.load(os.path.join(opt.outf, 'net.pth')), strict=False)
 
     print("number of parameters ", sum(param.numel() for param in model.parameters()))
 
-    if opt.train_all:
-        for param in model.parameters():
-            param.requires_grad = True
+    # if opt.train_all:
+    #     for param in model.parameters():
+    #         param.requires_grad = True
 
     criterion.cuda()
     # Optimizer
@@ -200,8 +209,8 @@ def main():
                 # pdb.set_trace()
                 psnr_train = psnrs.max(axis=1).mean()
 
-            if i == 10:
-                break
+            # if i == 100:
+            #     break
 
             if i%10==0:
                 print("[epoch %d][%d/%d] loss: %.4f PSNR_train: %.4f Running time: %.2fs" %
@@ -229,9 +238,13 @@ def main():
                     out_val = torch.clamp(imgn_val-model(imgn_val)[-1], 0., 1.)
                     psnr_val += batch_PSNR(out_val, img_val, 1.)
                 if opt.model=='ebm':
-                    print("call once")
+                    # print("call once")
                     out_val = model.forward(imgn_val)
-                    print("done once")
+
+                    im = out_val.detach().cpu().numpy()[0, 0]
+                    imwrite("im_{}.png".format(k), im)
+
+                    # print("done once")
                     out_val = torch.clamp(out_val.detach(), 0., 1.)
                     psnr_val += batch_PSNR(out_val, img_val, 1.)
                 if (opt.model=='DnCNN_DS') or (opt.model=='Recurrent_DS'):

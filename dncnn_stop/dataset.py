@@ -63,6 +63,7 @@ def prepare_data(data_path, patch_size, stride, aug_times=1):
     for i in range(len(files)):
         print("file: %s" % files[i])
         img = cv2.imread(files[i])
+        img = cv2.resize(img, (256, 256))
         img = np.expand_dims(img[:,:,0], 0)
         img = np.float32(normalize(img))
         h5f.create_dataset(str(val_num), data=img)

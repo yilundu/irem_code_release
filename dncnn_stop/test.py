@@ -7,8 +7,9 @@ import random
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from models import DnCNN,DnCNN_DS,Recurrent_DS
+from models import DnCNN,DnCNN_DS,Recurrent_DS,EBM
 from utils import *
+from imageio import imwrite
 import pdb
 from torchvision.utils import save_image
 
@@ -39,6 +40,8 @@ def main():
     print('Loading model ...\n')
     if opt.model=='DnCNN':
         net = DnCNN(channels=1, num_of_layers=opt.num_of_layers)
+    if opt.model=='ebm':
+        net = EBM(channels=1, num_of_layers=20)
     if opt.model=='DnCNN_DS':
         net = DnCNN_DS(channels=1, num_of_layers=opt.num_of_layers)
     if opt.model=='Recurrent_DS':
@@ -55,7 +58,7 @@ def main():
         print('The val name is: ', highest_val_path)
         model.load_state_dict(torch.load(os.path.join(opt.logdir, highest_val_path)))
     else:
-        model.load_state_dict(torch.load(os.path.join(opt.logdir, 'net.pth')))
+        model.load_state_dict(torch.load(os.path.join(opt.logdir, 'net.pth')), strict=False)
 
     model.eval()
     # load data info
@@ -74,6 +77,8 @@ def main():
 
     psnr_all = list()
     for i, f in enumerate(files_source):
+        if i == 0:
+            continue
         # image
         Img = cv2.imread(f)
         Img = normalize(np.float32(Img[:,:,0]))
@@ -95,21 +100,32 @@ def main():
         INoisy = ISource + noise
         ISource, INoisy = Variable(ISource.cuda()), Variable(INoisy.cuda())
 
+        Outs = []
+
         with torch.no_grad(): # this can save much memory
             if (opt.model=='DnCNN_DS') or (opt.model=='Recurrent_DS'):
                 preds = model(INoisy)
             if opt.model=='DnCNN':
                 preds = model(INoisy)[-1:]
-            Outs = list()
+            if opt.model=='ebm':
+                preds, ims = model(INoisy)
+
+            for i in range(len(ims)):
+                im = ims[i][0, 0].cpu().numpy()
+                imwrite("test{}.png".format(i), im)
+            assert False
             for pred in preds:
-                Outs.append(torch.clamp(INoisy-pred, 0., 1.))
+                if opt.model=='ebm':
+                    Outs.append(torch.clamp(pred, 0., 1.))
+                else:
+                    Outs.append(torch.clamp(INoisy-pred, 0., 1.))
         ## if you are using older version of PyTorch, torch.no_grad() may not be supported
         # ISource, INoisy = Variable(ISource.cuda(),volatile=True), Variable(INoisy.cuda(),volatile=True)
         # Out = torch.clamp(INoisy-model(INoisy), 0., 1.)
         psnrs = list()
 
         for Out in Outs:
-            psnr = batch_PSNR(Out, ISource, 1.)
+            psnr = batch_PSNR(Out[None], ISource, 1.)
             psnrs.append(psnr)
         psnr_last += psnrs[-1]
         psnr_best += np.max(psnrs)

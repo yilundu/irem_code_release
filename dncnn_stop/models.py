@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import math
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -8,6 +10,41 @@ class Flatten(nn.Module):
 
 def swish(x):
     return x * torch.sigmoid(x)
+
+
+def get_gaussian_kernel(kernel_size=3, sigma=2, channels=3):
+    # Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
+    x_coord = torch.arange(kernel_size)
+    x_grid = x_coord.repeat(kernel_size).view(kernel_size, kernel_size)
+    y_grid = x_grid.t()
+    xy_grid = torch.stack([x_grid, y_grid], dim=-1).float()
+
+    mean = (kernel_size - 1)/2.
+    variance = sigma**2.
+
+    # Calculate the 2-dimensional gaussian kernel which is
+    # the product of two gaussian distributions for two different
+    # variables (in this case called x and y)
+    gaussian_kernel = (1./(2.*math.pi*variance)) *\
+                      torch.exp(
+                          -torch.sum((xy_grid - mean)**2., dim=-1) /\
+                          (2*variance)
+                      )
+
+    # Make sure sum of values in gaussian kernel equals 1.
+    gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
+
+    # Reshape to 2d depthwise convolutional weight
+    gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
+    gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
+
+    gaussian_filter = nn.Conv2d(in_channels=channels, out_channels=channels,
+                                kernel_size=kernel_size, groups=channels, bias=False, padding=kernel_size//2)
+
+    gaussian_filter.weight.data = gaussian_kernel
+    gaussian_filter.weight.requires_grad = False
+    
+    return gaussian_filter
 
 
 class ResBlock(nn.Module):
@@ -31,6 +68,8 @@ class ResBlock(nn.Module):
 
         x_out = x_orig + x
 
+        x_out = swish(x_out)
+
         return x_out
 
 class EBM(nn.Module):
@@ -39,11 +78,13 @@ class EBM(nn.Module):
         self.num_of_layers = num_of_layers
         kernel_size = 3
         padding = 1
-        features = 64
+        features = 32
         self.layers = nn.ModuleList()
+
+        self.conv_avg = get_gaussian_kernel(kernel_size=7, channels=1)
         self.layers.append(nn.Conv2d(in_channels=2*channels, out_channels=features,
             kernel_size=kernel_size, padding=padding, bias=True))
-        self.layers.append(nn.SiLU(inplace=True))
+        # self.layers.append(nn.ReLU(inplace=True))
 
         for _ in range((num_of_layers-2) // 2):
             self.layers.append(ResBlock(filters=features))
@@ -55,27 +96,46 @@ class EBM(nn.Module):
         for i, l in enumerate(self.layers):
             x = l(x)
 
+            if i == 0:
+                x = swish(x)
+
         energy = x.mean(dim=-1).mean(dim=-1)
         return energy
 
     def forward(self, x):
-        opt = x.clone()
+
         w = x.size(-1)
 
-        if w == 256:
+        if w >= 64:
             train = False
+            # Best setting for noise level of 75
+
+            # 2000 was the one used in the paper
+            num_steps = 200
+            # step_lr = 2000.0
+            step_lr = 1000.0
+
+            # num_steps = 80
+            # step_lr = 3000.0
         else:
             train = True
+            num_steps = 3
+            step_lr = 100.0
 
 
+        ims = []
         with torch.enable_grad():
+            x = torch.clamp(x, 0, 1)
+            opt = self.conv_avg(x.clone())
+            opt = x.clone()
             opt.requires_grad_()
+            ims.append(x.clone())
 
-            for i in range(5):
+            for i in range(num_steps):
                 inp = torch.cat([opt, x], dim=1)
                 energy = self.compute_energy(inp)
 
-                if i == 4:
+                if i > -1:
                     if train:
                         opt_grad, = torch.autograd.grad([energy.sum()], [opt], create_graph=True)
                     else:
@@ -83,13 +143,17 @@ class EBM(nn.Module):
                 else:
                     opt_grad, = torch.autograd.grad([energy.sum()], [opt], create_graph=False)
 
-                opt = opt - opt_grad * 10
+                opt = opt - opt_grad * step_lr
+                opt = torch.clamp(opt, 0, 1)
 
-                if not train:
-                    opt = opt.detach()
-                    opt.requires_grad_()
+                # if not train and i < 3:
+                #     opt = opt.detach()
+                #     opt.requires_grad_()
 
-        return opt
+                if i % 2 == 0:
+                    ims.append(opt.detach())
+
+        return opt, ims
 
 
 class DnCNN(nn.Module):
